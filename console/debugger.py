@@ -182,7 +182,7 @@ class PortWrapper:
 
     def read_nonblocking(self, count: int):
         return self.port.read(count)
-    
+
     def read(self, count: int):
         assert(count >= 0)
 
@@ -193,13 +193,13 @@ class PortWrapper:
             result += self.read_nonblocking(count)
 
         return result
-    
+
     def read_exact(self, count: int):
         result = self.read(count)
         if len(result) != count:
             raise TimeoutError
         return result
-    
+
     def write(self, data: bytes):
         self.port.write(data)
 
@@ -219,14 +219,14 @@ class VersionInfo:
 class Debugger:
     def __init__(self, port, timeout):
         self.port = PortWrapper(port, timeout)
-    
+
     def start_command(self, b: bytes):
         assert(len(b) == 1)
         self.port.write(b)
         echo = self.port.read_exact(1)
         if echo != b:
             raise InvalidHeader(f'expected {b} but found {echo}')
-    
+
     @classmethod
     def open(cls, path):
         port = Serial(path, 115200, timeout=0.0)
@@ -236,7 +236,7 @@ class Debugger:
         self.start_command(CMD_PING)
         data = self.port.read_exact(5)
         return data
-    
+
     def print_info(self) -> VersionInfo:
         self.start_command(CMD_PRINT_INFO)
 
@@ -270,7 +270,7 @@ class Debugger:
                     print('   ', end='')
             print()
             print()
-            
+
             print('(last 32 bytes)')
             print('tried to write: ', end='')
             for d in data[32:][:32]:
@@ -304,7 +304,7 @@ class Debugger:
         confirm = self.port.read_exact(1)
         if confirm != b'\x00':
             raise Exception(confirm)
-    
+
     def read(self, addr: int, len_bytes: int):
         assert(len_bytes < 0x1_0000)
 
@@ -316,7 +316,7 @@ class Debugger:
         data = self.port.read_exact(len_bytes)
         assert(len(data) == len_bytes)
         return data
-    
+
     def set_breakpoint(self, addr: int):
         assert(addr <= 0xFFFF)
 
@@ -327,32 +327,32 @@ class Debugger:
         if ok == b'\xFF':
             raise Exception('Too many breakpoints')
         print(f'Set breakpoint {ok} at address ${addr:04X}')
-    
+
     def enter_fast_mode(self):
         self.start_command(CMD_ENTER_FAST_MODE)
 
     def reset_cpu(self):
         self.start_command(CMD_RESET_CPU)
-    
+
     def get_bus_state(self) -> BusState:
         self.start_command(CMD_GET_BUS_STATE)
 
         state = self.port.read_exact(6)
         return BusState.from_bytes(state)
-    
+
     def get_cpu_state(self) -> CpuState:
         self.start_command(CMD_GET_CPU_STATE)
 
         state = self.port.read_exact(16)
         return CpuState.from_bytes(state)
-    
+
     def poll_breakpoint(self):
         if self.port.read_nonblocking(1) == CMD_HIT_BREAKPOINT:
             which = self.port.read_exact(1)
             return which[0]
         else:
             return None
-    
+
     def step(self):
         while True:
             self.poll_breakpoint()
@@ -361,14 +361,14 @@ class Debugger:
             state = self.get_cpu_state()
             if state.sync and state.phi2:
                 break
-        
+
     def step_half_cycle(self):
         self.start_command(CMD_STEP_HALF_CYCLE)
-    
+
     def step_cycle(self):
         self.step_half_cycle()
         self.step_half_cycle()
-    
+
     def cont(self):
         self.start_command(CMD_CONTINUE)
 
@@ -386,7 +386,7 @@ def infer_port(default):
     if default is not None:
         print(f'Using explicit serial port {default}')
         return default
-        
+
     for port in serial.tools.list_ports.comports():
         if port.vid == 0x1A86 and port.pid == 0x55D2:
             if sys.platform.startswith('win'):
@@ -402,14 +402,14 @@ def infer_port(default):
             else:
                 print('Cannot guess port on Linux, too bad')
                 break
-    
+
     raise Exception('Failed to find serial port, try specifying with --port')
-    
+
 
 
 def do_deploy_bin(args):
     return do_deploy(args, is_bin=True)
-    
+
 def do_deploy(args, is_bin=False):
     if is_bin:
         if args.file.lower().endswith('.s'):
@@ -478,7 +478,7 @@ def do_deploy(args, is_bin=False):
 
             if max(c1_start, c2_start) <= min(c1_end, c2_end):
                 raise Exception('TODO: Overlapping chunks')
-    
+
     for chunk in chunks:
         base_addr = chunk.base_addr & ~EEPROM_PAGE_MASK
         data = copy.copy(chunk.data)
@@ -486,12 +486,12 @@ def do_deploy(args, is_bin=False):
             data = b'\xFF' * (chunk.base_addr & EEPROM_PAGE_MASK) + data
         while len(data) & EEPROM_PAGE_MASK != 0:
             data = data + b'\xFF'
-        
+
         for page in range(0, len(data), EEPROM_PAGE_SIZE):
             dbg.page_write(base_addr + page, data[page:][:EEPROM_PAGE_SIZE])
             print('.', end='', flush=True)
     print()
-    
+
     print('Resetting CPU')
 
     dbg.reset_cpu()
@@ -509,7 +509,7 @@ def do_debug(args):
     except Exception:
         listing = None
         print('Could not open listing file asm.lst')
-    
+
     try:
         with open('asm.sym', 'r') as f:
             sym_data = f.read()
@@ -517,7 +517,7 @@ def do_debug(args):
     except Exception:
         symbol_table = None
         print('Could not open symbol table asm.sym')
-    
+
     if listing is not None and symbol_table is not None:
         print(f'Loaded debug info for file {listing.file_name}')
 
@@ -555,12 +555,12 @@ def do_debug(args):
                         else:
                             print(f'Hit breakpoint {which_breakpoint}, stopping')
                         break
-                    
+
                     time.sleep(0.1)
             except KeyboardInterrupt:
                 print('Keyboard interrupt, stopping')
                 dbg.step_half_cycle()
-            
+
             free_running = False
             walking = False
 
@@ -685,7 +685,7 @@ def do_debug(args):
                 print(f'Unknown command {repr(cmd)}')
         except ValueError as e:
             print(f'Error while executing command: {e}')
-    
+
     print('Debugger exited')
 
 def main():

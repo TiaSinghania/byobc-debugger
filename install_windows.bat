@@ -14,7 +14,7 @@ echo.
 
 echo Installing pyserial
 
-python -m pip install pyserial
+python3 -m pip install pyserial
 
 echo.
 echo Install finished
